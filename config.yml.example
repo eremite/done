@@ -1,0 +1,4 @@
+# See http://www.redmine.org/projects/redmine/wiki/Rest_api
+site: http://your-redmine-install.com
+user: d212936751232acb2d2bbe30b68b1f3e0103dbc3
+password: api_key
