@@ -81,7 +81,11 @@ class Done < Thor
           :spent_on => date.beginning_of_day,
           :comments => comment.squish,
         })
-        pp time.errors unless time_entry.save
+        begin
+          pp time.errors unless time_entry.save
+        rescue ActiveResource::ForbiddenAccess
+          puts "ForbiddenAccess for '#{l}'."
+        end
       end
     end
     t.close!
