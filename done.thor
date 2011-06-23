@@ -69,7 +69,9 @@ class Done < Thor
       contents.each do |l|
         puts l.inspect
         issue_id, hours, comment = l.split(" ", 3)
-        comment = comment.gsub(/refs #\d+/, '').squish
+        comment = comment.squish
+        comment.gsub!(/refs #\d+/, '')
+        comment.gsub!(/^training:? /i, '')
         activity_id = SETTINGS[:activity_ids][:billable]
         activity_id = SETTINGS[:activity_ids][:unbillable] if SETTINGS[:issue_ids].values.include?(issue_id.to_i) || comment =~ /UNBILLABLE/
         time_entry = TimeEntry.new({
