@@ -1,12 +1,14 @@
 #!/usr/bin/env ruby
 
+ENV["BUNDLE_GEMFILE"] = "#{File.dirname(__FILE__)}/Gemfile"
+
 require 'rubygems'
-require 'thor'
 require 'fileutils'
 require 'logger'
-require 'active_support/all'
 require 'tempfile'
-require 'active_resource'
+require 'bundler'
+Bundler.require
+
 
 SETTINGS = YAML.load_file(File.expand_path('config.yml', File.dirname(__FILE__))).with_indifferent_access
 
