@@ -56,10 +56,6 @@ class Done < Thor
       next if hours.zero? || /^out$/i.match(comment.squish)
       t << "#{issue_id.to_s.rjust(7)} #{hours.round(2).to_s.rjust(5)}  #{log.split[3..-1].join(' ')}\n"
     end
-    t << logs.inject('') do |string, log|
-    end
-    t << "\n"
-    t << logs.map {|l| "# #{l}"}.join("\n")
     t.close
     system "vim -S #{File.expand_path(File.dirname(__FILE__))}/done.vim #{t.path}"
     t.open
