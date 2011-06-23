@@ -42,13 +42,14 @@ nnoremap <Leader>j :call CombineLines()<CR>
 
 set ft=done
 syn match doneTotal /\d\+\.\d*/
+hi def link doneTotal Constant
 syn match doneComment /^\s*#.*$/ contains=doneTotal
 hi def link doneComment Comment
-
 syn match doneHours /\d\+\.\d*/
-syn match doneUnbillable /[^\d]4761[^\d]/
-syn match doneIssueNumber /^\s*\d\+/ nextgroup=doneHours contains=doneUnbillable
-hi def link doneIssueNumber Statement
 hi def link doneHours Type
-hi def link doneTotal Constant
+syn match doneUnbillable /[^\d]4761[^\d]/
 hi def link doneUnbillable Todo
+syn match doneTraining /[^\d]4762[^\d]/
+hi def link doneTraining Question
+syn match doneIssueNumber /^\s*\d\+/ nextgroup=doneHours contains=doneUnbillable,doneTraining
+hi def link doneIssueNumber Statement
