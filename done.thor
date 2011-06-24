@@ -12,6 +12,12 @@ Bundler.require
 
 SETTINGS = YAML.load_file(File.expand_path('config.yml', File.dirname(__FILE__))).with_indifferent_access
 
+class Project < ActiveResource::Base
+  self.site = SETTINGS[:site]
+  self.user = SETTINGS[:user]
+  self.password = SETTINGS[:password]
+end
+
 class TimeEntry < ActiveResource::Base
   self.site = SETTINGS[:site]
   self.user = SETTINGS[:user]
@@ -75,12 +81,16 @@ class Done < Thor
         activity_id = SETTINGS[:activity_ids][:billable]
         activity_id = SETTINGS[:activity_ids][:unbillable] if SETTINGS[:issue_ids].values.include?(issue_id.to_i) || comment =~ /UNBILLABLE/
         time_entry = TimeEntry.new({
-          :issue_id => issue_id,
           :hours => hours,
           :activity_id => activity_id,
           :spent_on => date.beginning_of_day,
           :comments => comment.squish,
         })
+        if /\D/.match(issue_id)
+          time_entry.project_id = Project.find(:first, :conditions => {:identifier => issue_id}).try(:id)
+        else
+          time_entry.issue_id = issue_id
+        end
         begin
           pp time.errors unless time_entry.save
         rescue ActiveResource::ForbiddenAccess
