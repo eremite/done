@@ -76,10 +76,11 @@ class Done < Thor
         puts l.inspect
         issue_id, hours, comment = l.split(" ", 3)
         comment = comment.squish
-        comment.gsub!(/refs #\d+/, '')
-        comment.gsub!(/^training:? /i, '')
         activity_id = SETTINGS[:activity_ids][:billable]
         activity_id = SETTINGS[:activity_ids][:unbillable] if SETTINGS[:issue_ids].values.include?(issue_id.to_i) || comment =~ /UNBILLABLE/
+        comment.gsub!(/refs #\d+/, '')
+        comment.gsub!(/^training:? /i, '')
+        comment.gsub!(/UNBILLABLE/, '')
         time_entry = TimeEntry.new({
           :hours => hours,
           :activity_id => activity_id,
