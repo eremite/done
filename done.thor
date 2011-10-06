@@ -9,20 +9,7 @@ require 'tempfile'
 require 'bundler'
 Bundler.require
 
-
-SETTINGS = YAML.load_file(File.expand_path('config.yml', File.dirname(__FILE__))).with_indifferent_access
-
-class Project < ActiveResource::Base
-  self.site = SETTINGS[:site]
-  self.user = SETTINGS[:user]
-  self.password = SETTINGS[:password]
-end
-
-class TimeEntry < ActiveResource::Base
-  self.site = SETTINGS[:site]
-  self.user = SETTINGS[:user]
-  self.password = SETTINGS[:password]
-end
+CONFIG = YAML.load_file(File.expand_path('config.yml', File.dirname(__FILE__))).with_indifferent_access
 
 class Done < Thor
 
@@ -54,13 +41,11 @@ class Done < Thor
       logtime = Time.parse(logtime)
       time = logtime and next if time.nil?
       hours = (logtime - time) / 1.hours
-      issue_id = /#(\d+)/.match(comment) ? $1.to_i : SETTINGS[:issue_ids][:misc]
-      issue_id = SETTINGS[:issue_ids][:training] if /^training/i.match(comment)
       new_time = Time.parse(log[/^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})/])
       hours = (new_time - time) / 1.hour
       time = new_time
       next if hours.zero? || /^out$/i.match(comment.squish)
-      t << "#{issue_id.to_s.rjust(7)} #{hours.round(2).to_s.rjust(5)}  #{log.split[3..-1].join(' ')}\n"
+      t << "#{hours.round(2).to_s.rjust(5)} #{dir} #{log.split[3..-1].join(' ')}\n"
     end
     t.close
     system "vim -S #{File.expand_path(File.dirname(__FILE__))}/done.vim #{t.path}"
@@ -71,31 +56,45 @@ class Done < Thor
     if contents.blank?
       puts "Aborting. Nothing to do."
     else
-      puts "Updating issues in redmine..."
+      puts "Sending time entries to freshbooks..."
       contents.each do |l|
         puts l.inspect
-        issue_id, hours, comment = l.split(" ", 3)
+        hours, dir, comment = l.split(" ", 3)
+        project_id = CONFIG[:projects][dir]
+        if project_id.blank?
+          puts "No FreshBooks project found for #{dir}!"
+          next
+        end
         comment = comment.squish
-        activity_id = SETTINGS[:activity_ids][:billable]
-        activity_id = SETTINGS[:activity_ids][:unbillable] if SETTINGS[:issue_ids].values.include?(issue_id.to_i) || comment =~ /UNBILLABLE/
         comment.gsub!(/refs #\d+/, '')
-        comment.gsub!(/^training:? /i, '')
-        comment.gsub!(/UNBILLABLE/, '')
-        time_entry = TimeEntry.new({
-          :hours => hours,
-          :activity_id => activity_id,
-          :spent_on => date.beginning_of_day,
-          :comments => comment.squish,
-        })
-        if /\D/.match(issue_id)
-          time_entry.project_id = Project.find(:first, :conditions => {:identifier => issue_id}).try(:id)
-        else
-          time_entry.issue_id = issue_id
+        comment.gsub!(/closes #\d+/, '')
+        # comment.gsub!(/^training:? /i, '')
+        # comment.gsub!(/UNBILLABLE/, '')
+        task_id =
+          case comment
+          when /RESEARCH/
+            CONFIG[:tasks][:research]
+          when /MEETING/
+            CONFIG[:tasks][:meetings]
+          else
+            CONFIG[:tasks][:general]
+          end
+        builder = Nokogiri::XML::Builder.new(:encoding => 'utf-8') do |xml|
+          xml.request(:method => 'time_entry.create') do
+            xml.time_entry do
+              xml.project_id project_id
+              xml.task_id task_id
+              xml.hours hours
+              xml.notes comment
+              xml.date date.strftime("%F")
+            end
+          end
         end
         begin
-          pp time.errors unless time_entry.save
-        rescue ActiveResource::ForbiddenAccess
-          puts "ForbiddenAccess for '#{l}'."
+          r = Nokogiri::XML(RestClient.post(CONFIG[:url], builder.to_xml))
+          puts r
+        rescue => e
+          puts "FAIL :( #{e.inspect}"
         end
       end
     end
@@ -120,15 +119,15 @@ class Done < Thor
     log(comment)
   end
 
-  desc "browserlog", "Log to the active Redmine issue in Firefox"
-  def browserlog
-    comment = `wmctrl -l | grep 'Mozilla Firefox'`
-    a, issue_id, comment = /#(\d+): ([^-]*) -/.match(comment).to_a
-    if issue_id && comment
-      puts comment
-      log("#{comment}. refs ##{issue_id}")
-    end
-  end
+  # desc "browserlog", "Log to the active Redmine issue in Firefox"
+  # def browserlog
+  #   comment = `wmctrl -l | grep 'Mozilla Firefox'`
+  #   a, issue_id, comment = /#(\d+): ([^-]*) -/.match(comment).to_a
+  #   if issue_id && comment
+  #     puts comment
+  #     log("#{comment}. refs ##{issue_id}")
+  #   end
+  # end
 
 end
 Done.start

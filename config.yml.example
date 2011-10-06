@@ -1,4 +1,14 @@
-# See http://www.redmine.org/projects/redmine/wiki/Rest_api
-site: http://your-redmine-install.com
-user: d212936751232acb2d2bbe30b68b1f3e0103dbc3
-password: api_key
+# http://developers.freshbooks.com/authentication-2
+url: https://your_api_token:X@your_subdomain.freshbooks.com/api/2.1/xml-in
+
+# curl -u your_api_token:X https://your_subdomain.freshbooks.com/api/2.1/xml-in -d '<?xml version="1.0" encoding="utf-8"?><request method="task.list"></request>'
+tasks:
+  general: 1
+  meetings: 2
+  research: 3
+
+# curl -u your_api_token:X https://your_subdomain.freshbooks.com/api/2.1/xml-in -d '<?xml version="1.0" encoding="utf-8"?><request method="project.list"></request>'
+projects:
+  project1: 1
+  nickname1: 1
+  project2: 2
