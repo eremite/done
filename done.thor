@@ -29,15 +29,46 @@ class Done < Thor
   desc "report", "Daily Report"
   method_options :days_ago => 0
   def report
+
+    # Get client list from FreshBooks
+    builder = Nokogiri::XML::Builder.new(:encoding => 'utf-8') do |xml|
+      xml.request(:method => 'client.list')
+    end
+    r = Nokogiri::XML(RestClient.post(CONFIG[:url], builder.to_xml))
+    r.remove_namespaces!
+    clients = {}
+    r.xpath("//client").each do |client|
+      clients[client.at_xpath("client_id").text.to_i] = client.at_xpath("organization").text
+    end
+    # clients = {11=>"Client Company LLC"}
+
+    # Get project list from FreshBooks
+    builder = Nokogiri::XML::Builder.new(:encoding => 'utf-8') do |xml|
+      xml.request(:method => 'project.list')
+    end
+    r = Nokogiri::XML(RestClient.post(CONFIG[:url], builder.to_xml))
+    r.remove_namespaces!
+    projects = {}
+    r.xpath("//project").each do |project|
+      projects[project.at_xpath("project_id").text.to_i] = {
+        :name => project.at_xpath("name").text,
+        :client => clients[project.at_xpath("client_id").text.to_i],
+      }
+    end
+    # e.g. projects = {1=>{:client=>"Client Company LLC", :name=>"Create website"}}
+
+    # Parse log file, create report and open it in vim
     date = options.days_ago.days.ago
     logs = `grep '^#{date.strftime("%F")}' #{LOG_FILE}`.split("\n").sort
+    directories = []
     t = Tempfile.new(%w(report .txt))
     t << "# Total: 0.0\n"
-    t << "# Issue Hours  Comment\n"
+    t << "# Hours Project Comment\n"
     time = nil
     logs.each do |log|
       puts log
       logtime, dir, comment = /^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) (\S+)  ?(.*)$/.match(log).captures
+      directories << dir unless directories.include?(dir)
       logtime = Time.parse(logtime)
       time = logtime and next if time.nil?
       hours = (logtime - time) / 1.hours
@@ -47,8 +78,24 @@ class Done < Thor
       next if hours.zero? || /^out$/i.match(comment.squish)
       t << "#{hours.round(2).to_s.rjust(5)} #{dir} #{log.split[3..-1].join(' ')}\n"
     end
+    t << "\n"
+    directories.each do |dir|
+      pid = CONFIG[:projects][dir]
+      project = projects[pid]
+      if project
+        t << "# #{pid.to_s.rjust(3)} #{dir} #{project[:name]} | #{project[:client]}\n"
+      else
+        t << "#     #{dir} WARNING: No project set\n"
+      end
+    end
+    t << "\n"
+    projects.sort.reverse.each do |pid, project|
+      t << "# #{pid.to_s.rjust(3)} #{project[:name]} | #{project[:client]}\n"
+    end
     t.close
     system "vim -S #{File.expand_path(File.dirname(__FILE__))}/done.vim #{t.path}"
+
+    # Reopen editted report, parse and send to FreshBooks
     t.open
     t.rewind
     contents = t.read.split("\n")
@@ -60,16 +107,11 @@ class Done < Thor
       contents.each do |l|
         puts l.inspect
         hours, dir, comment = l.split(" ", 3)
-        project_id = CONFIG[:projects][dir]
-        if project_id.blank?
-          puts "No FreshBooks project found for #{dir}!"
-          next
-        end
+        project_id = dir.to_i > 0 ? dir.to_i : CONFIG[:projects][dir]
+        puts "No FreshBooks project found for #{dir}!" and next if project_id.blank?
         comment = comment.squish
         comment.gsub!(/refs #\d+/, '')
         comment.gsub!(/closes #\d+/, '')
-        # comment.gsub!(/^training:? /i, '')
-        # comment.gsub!(/UNBILLABLE/, '')
         task_id =
           case comment
           when /RESEARCH/
