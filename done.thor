@@ -30,32 +30,37 @@ class Done < Thor
   method_options :days_ago => 0
   def report
 
-    # Get client list from FreshBooks
-    builder = Nokogiri::XML::Builder.new(:encoding => 'utf-8') do |xml|
-      xml.request(:method => 'client.list')
+    if File.exists?(path = File.expand_path('freshbooks_projects.yml', File.dirname(__FILE__)))
+      projects = YAML.load_file(path).with_indifferent_access
+    else
+      # Get client list from FreshBooks
+      builder = Nokogiri::XML::Builder.new(:encoding => 'utf-8') do |xml|
+        xml.request(:method => 'client.list')
+      end
+      r = Nokogiri::XML(RestClient.post(CONFIG[:url], builder.to_xml))
+      r.remove_namespaces!
+      clients = {}
+      r.xpath("//client").each do |client|
+        clients[client.at_xpath("client_id").text.to_i] = client.at_xpath("organization").text
+      end
+      # Get project list from FreshBooks
+      builder = Nokogiri::XML::Builder.new(:encoding => 'utf-8') do |xml|
+        xml.request(:method => 'project.list')
+      end
+      r = Nokogiri::XML(RestClient.post(CONFIG[:url], builder.to_xml))
+      r.remove_namespaces!
+      projects = {}.with_indifferent_access
+      r.xpath("//project").each do |project|
+        projects[project.at_xpath("project_id").text.to_i] = {
+          :name => project.at_xpath("name").text,
+          :client => clients[project.at_xpath("client_id").text.to_i],
+        }
+      end
+      File.open(path, 'w') do |f|
+        f << projects.to_yaml
+      end
+      # e.g. projects = {1 => {:client => "Client Company LLC", :name => "Create website"}}
     end
-    r = Nokogiri::XML(RestClient.post(CONFIG[:url], builder.to_xml))
-    r.remove_namespaces!
-    clients = {}
-    r.xpath("//client").each do |client|
-      clients[client.at_xpath("client_id").text.to_i] = client.at_xpath("organization").text
-    end
-    # clients = {11=>"Client Company LLC"}
-
-    # Get project list from FreshBooks
-    builder = Nokogiri::XML::Builder.new(:encoding => 'utf-8') do |xml|
-      xml.request(:method => 'project.list')
-    end
-    r = Nokogiri::XML(RestClient.post(CONFIG[:url], builder.to_xml))
-    r.remove_namespaces!
-    projects = {}
-    r.xpath("//project").each do |project|
-      projects[project.at_xpath("project_id").text.to_i] = {
-        :name => project.at_xpath("name").text,
-        :client => clients[project.at_xpath("client_id").text.to_i],
-      }
-    end
-    # e.g. projects = {1=>{:client=>"Client Company LLC", :name=>"Create website"}}
 
     # Parse log file, create report and open it in vim
     date = options.days_ago.days.ago
