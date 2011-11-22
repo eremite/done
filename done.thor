@@ -143,7 +143,12 @@ class Done < Thor
         end
         begin
           r = Nokogiri::XML(RestClient.post(CONFIG[:url], builder.to_xml))
-          puts r
+          r.remove_namespaces!
+          if r.xpath('/response').try(:attr, 'status').try(:value) == 'ok'
+            puts "Sent: #{comment}"
+          else
+            puts r.xpath('//error').try(:text)
+          end
         rescue => e
           puts "FAIL :( #{e.inspect}"
         end
