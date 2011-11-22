@@ -35,7 +35,9 @@ class Done < Thor
     else
       # Get client list from FreshBooks
       builder = Nokogiri::XML::Builder.new(:encoding => 'utf-8') do |xml|
-        xml.request(:method => 'client.list')
+        xml.request(:method => 'client.list') do
+          xml.per_page 100
+        end
       end
       r = Nokogiri::XML(RestClient.post(CONFIG[:url], builder.to_xml))
       r.remove_namespaces!
@@ -45,7 +47,9 @@ class Done < Thor
       end
       # Get project list from FreshBooks
       builder = Nokogiri::XML::Builder.new(:encoding => 'utf-8') do |xml|
-        xml.request(:method => 'project.list')
+        xml.request(:method => 'project.list') do
+          xml.per_page 100
+        end
       end
       r = Nokogiri::XML(RestClient.post(CONFIG[:url], builder.to_xml))
       r.remove_namespaces!
