@@ -74,6 +74,7 @@ class Done < Thor
     t << "# Total: 0.0\n"
     t << "# Hours Project Comment\n"
     time = nil
+    entries = []
     logs.each do |log|
       puts log
       logtime, dir, comment = /^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) (\S+)  ?(.*)$/.match(log).captures
@@ -85,8 +86,9 @@ class Done < Thor
       hours = (new_time - time) / 1.hour
       time = new_time
       next if hours.zero? || /^out$/i.match(comment.squish)
-      t << "#{hours.round(2).to_s.rjust(5)} #{dir} #{log.split[3..-1].join(' ')}\n"
+      entries << "#{hours.round(2).to_s.rjust(5)} #{dir} #{log.split[3..-1].join(' ')}\n"
     end
+    entries.sort_by {|l| l.split[1]}.each {|e| t << e}
     t << "\n"
     directories.each do |dir|
       pid = CONFIG[:projects][dir]
