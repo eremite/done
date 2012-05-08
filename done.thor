@@ -163,11 +163,9 @@ class Done < Thor
   def log(*comments)
     count_of_todays_logs = `grep -c '^#{Time.now.strftime("%F")}' #{LOG_FILE}`.chomp
     if count_of_todays_logs.to_i.zero?
-      logged_in_at = Time.parse(`last | grep tty | head -1 | awk '{ print $4,$5,$6,$7 }'`.chomp)
-      minutes = (Time.now - logged_in_at) / 60
-      LOG.info "#{minutes} ###### #{Time.now.strftime("%A %D")} ######"
+      comments.unshift("###### #{Time.now.strftime("%A %D")} ######")
     end
-    LOG.info comments.join(' ')
+    LOG.info comments.join(' ').squish
   end
 
   desc "gitlog", "Use the latest git log as the comment"
