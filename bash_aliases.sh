@@ -1,4 +1,4 @@
-path='~/gits/done/' # TODO figure this out automatically
+path=$(dirname `readlink -f ${BASH_SOURCE[0]}`)
 
 alias d="${path}done.thor log"
 alias dg="${path}done.thor gitlog"
