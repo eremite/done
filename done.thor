@@ -130,8 +130,14 @@ class Done < Thor
           case comment
           when /RESEARCH/
             CONFIG[:tasks][:research]
+          when /DEVELOPMENT/
+            CONFIG[:tasks][:development]
           when /MEETING/
             CONFIG[:tasks][:meetings]
+          when /UNBILLED/
+            CONFIG[:tasks][:unbilled]
+          when /PROBONO/
+            CONFIG[:tasks][:probono]
           else
             CONFIG[:tasks][:general]
           end
