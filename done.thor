@@ -13,6 +13,9 @@ CONFIG = YAML.load_file(File.expand_path('config.yml', File.dirname(__FILE__))).
 
 class Done < Thor
 
+  # External editor
+  EDITOR = ENV['EDITOR'] || "vim"
+
   # Set up log
   LOG_FILE = File.expand_path('time.log', "#{File.dirname(__FILE__)}/log")
   FileUtils.mkdir_p(File.dirname(LOG_FILE))
@@ -185,5 +188,9 @@ class Done < Thor
   #   end
   # end
 
+  desc "editlog", "edit the current log file"
+  def editlog
+    system "#{EDITOR} #{LOG_FILE}"
+  end
 end
 Done.start
