@@ -1,3 +1,6 @@
 freshbooks_projects.yml
 config.yml
 log/*
+.bundle
+vendor
+tmp
