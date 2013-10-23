@@ -40,3 +40,9 @@ You can add nicknames for projects in the config file.
 If you forget to submit your time at the end of the day you can pass `--days_ago=1` as an argument to report. (This only works for the current week. If you forgot to submit last week's time, you'll have to go find the log file for it.)
 
 If you change your mind about running a report, just delete all the time entries and it won't try to send anything to Freshbooks.
+
+## Contributers
+
+Thanks!
+
+* https://github.com/taylor
