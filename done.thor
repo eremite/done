@@ -184,16 +184,6 @@ class Done < Thor
     log(comment)
   end
 
-  # desc "browserlog", "Log to the active Redmine issue in Firefox"
-  # def browserlog
-  #   comment = `wmctrl -l | grep 'Mozilla Firefox'`
-  #   a, issue_id, comment = /#(\d+): ([^-]*) -/.match(comment).to_a
-  #   if issue_id && comment
-  #     puts comment
-  #     log("#{comment}. refs ##{issue_id}")
-  #   end
-  # end
-
   desc "editlog", "edit the current log file"
   def editlog
     system "#{EDITOR} #{LOG_FILE}"
