@@ -1,14 +1,8 @@
-# http://developers.freshbooks.com/authentication-2
-url: https://your_api_token:X@your_subdomain.freshbooks.com/api/2.1/xml-in
+api_url: https://minutedock.com/api/v1/
+api_params:
+  api_key: ABC123
+  account_id: 123
 
-# curl -u your_api_token:X https://your_subdomain.freshbooks.com/api/2.1/xml-in -d '<?xml version="1.0" encoding="utf-8"?><request method="task.list"></request>'
-tasks:
-  general: 1
-  meetings: 2
-  research: 3
-
-# curl -u your_api_token:X https://your_subdomain.freshbooks.com/api/2.1/xml-in -d '<?xml version="1.0" encoding="utf-8"?><request method="project.list"></request>'
-projects:
-  project1: 1
-  nickname1: 1
-  project2: 2
+contacts:
+  client1: 1
+  client2: 2

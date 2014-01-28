@@ -1,20 +1,24 @@
-#!/usr/bin/env ruby
+#!/usr/local/opt/rbenv/versions/2.0.0-p195/bin/ruby
 
-ENV["BUNDLE_GEMFILE"] = "#{File.dirname(__FILE__)}/Gemfile"
+ENV['BUNDLE_GEMFILE'] = "#{File.dirname(__FILE__)}/Gemfile"
 
 require 'rubygems'
 require 'fileutils'
 require 'logger'
 require 'tempfile'
 require 'bundler'
+require 'open-uri'
+require 'net/http'
 Bundler.require
+
+I18n.enforce_available_locales = false # Avoid warnings.
 
 CONFIG = YAML.load_file(File.expand_path('config.yml', File.dirname(__FILE__))).with_indifferent_access
 
 class Done < Thor
 
   # External editor
-  EDITOR = ENV['EDITOR'] || "vim"
+  EDITOR = ENV['EDITOR'] || 'vim'
 
   # Set up log
   LOG_FILE = File.expand_path('time.log', "#{File.dirname(__FILE__)}/log")
@@ -29,53 +33,25 @@ class Done < Thor
     "#{datetime.strftime("%F %T")} #{File.basename(`pwd`.chomp)}  #{msg}\n"
   }
 
-  desc "report", "Daily Report"
+  desc 'report', 'Daily Report'
   method_options :days_ago => 0
   def report
 
-    if File.exists?(path = File.expand_path('freshbooks_projects.yml', File.dirname(__FILE__)))
-      projects = YAML.load_file(path).with_indifferent_access
+    if File.exists?(path = File.expand_path('contacts.yml', File.dirname(__FILE__)))
+      contacts = YAML.load_file(path)
     else
-      # Get client list from FreshBooks
-      builder = Nokogiri::XML::Builder.new(:encoding => 'utf-8') do |xml|
-        xml.request(:method => 'client.list') do
-          xml.per_page 100
-        end
-      end
-      r = Nokogiri::XML(RestClient.post(CONFIG[:url], builder.to_xml))
-      r.remove_namespaces!
-      clients = {}
-      r.xpath("//client").each do |client|
-        clients[client.at_xpath("client_id").text.to_i] = client.at_xpath("organization").text
-      end
-      # Get project list from FreshBooks
-      builder = Nokogiri::XML::Builder.new(:encoding => 'utf-8') do |xml|
-        xml.request(:method => 'project.list') do
-          xml.per_page 100
-        end
-      end
-      r = Nokogiri::XML(RestClient.post(CONFIG[:url], builder.to_xml))
-      r.remove_namespaces!
-      projects = {}.with_indifferent_access
-      r.xpath("//project").each do |project|
-        projects[project.at_xpath("project_id").text.to_i] = {
-          :name => project.at_xpath("name").text,
-          :client => clients[project.at_xpath("client_id").text.to_i],
-        }
-      end
-      File.open(path, 'w') do |f|
-        f << projects.to_yaml
-      end
-      # e.g. projects = {1 => {:client => "Client Company LLC", :name => "Create website"}}
+      contacts = get_from_api('contacts')
+      File.write(path, contacts.to_yaml)
     end
+    # e.g. contacts = [{"id"=>1, "name"=>"Contact Name", "pinned"=>false, "short_code"=>"contact_name", "default_rate_dollars"=>""}]
 
     # Parse log file, create report and open it in vim
     date = options.days_ago.days.ago
     logs = `grep '^#{date.strftime("%F")}' #{LOG_FILE}`.split("\n").sort
     directories = []
     t = Tempfile.new(%w(report .txt))
-    t << "# Total: 0.0\n"
-    t << "# Hours Project Comment\n"
+    t.puts "# Total: 0.0"
+    t.puts "# Hours Project Comment"
     time = nil
     entries = []
     logs.each do |log|
@@ -91,81 +67,49 @@ class Done < Thor
       next if hours.zero? || /^out$/i.match(comment.squish)
       entries << "#{hours.round(2).to_s.rjust(5)} #{dir} #{log.split[3..-1].join(' ')}\n"
     end
-    entries.sort_by {|l| l.split[1]}.each {|e| t << e}
-    t << "\n"
+    entries.sort_by { |l| l.split[1] }.each {|e| t << e}
+    t.puts
     directories.each do |dir|
-      pid = CONFIG[:projects][dir]
-      project = projects[pid]
-      if project
-        t << "# #{pid.to_s.rjust(3)} #{dir} #{project[:name]} | #{project[:client]}\n"
+      contact_id = CONFIG[:contacts][dir]
+      contact = contacts.find { |c| c['id'] == contact_id.to_i }
+      if contact
+        t.puts "# #{contact_id.to_s.rjust(7)} #{dir} #{contact['name']}"
       else
-        t << "#     #{dir} WARNING: No project set\n"
+        t.puts "#     #{dir} WARNING: No project set"
       end
     end
-    t << "\n"
-    projects.sort.reverse.each do |pid, project|
-      t << "# #{pid.to_s.rjust(3)} #{project[:name]} | #{project[:client]}\n"
+    t.puts
+    contacts.sort_by { |c| c['name'] }.each do |contact|
+      t.puts "# #{contact['id'].to_s.rjust(7)} #{contact['name']}"
     end
     t.close
     system "vim -S #{File.expand_path(File.dirname(__FILE__))}/done.vim #{t.path}"
 
-    # Reopen editted report, parse and send to FreshBooks
+    # Reopen editted report, parse and send to API
     t.open
     t.rewind
     contents = t.read.split("\n")
     contents.reject! {|l| l.squish.blank? || l =~ /^\s*#/}
     if contents.blank?
-      puts "Aborting. Nothing to do."
+      puts 'Aborting. Nothing to do.'
     else
-      puts "Sending time entries to freshbooks..."
+      puts 'Sending time entries to API...'
       contents.each do |l|
         puts l.inspect
-        hours, dir, comment = l.split(" ", 3)
-        project_id = dir.to_i > 0 ? dir.to_i : CONFIG[:projects][dir]
-        puts "No FreshBooks project found for #{dir}!" and next if project_id.blank?
+        hours, dir, comment = l.split(' ', 3)
         comment = comment.squish
-        comment.gsub!(/refs #\d+/, '')
-        comment.gsub!(/closes #\d+/, '')
-        task_id =
-          case comment
-          when /RESEARCH/
-            CONFIG[:tasks][:research]
-          when /DEVELOPMENT/
-            CONFIG[:tasks][:development]
-          when /MEETING/
-            CONFIG[:tasks][:meetings]
-          when /UNBILLED/
-            CONFIG[:tasks][:unbilled]
-          when /PROBONO/
-            CONFIG[:tasks][:probono]
-          else
-            CONFIG[:tasks][:general]
-          end
-        builder = Nokogiri::XML::Builder.new(:encoding => 'utf-8') do |xml|
-          xml.request(:method => 'time_entry.create') do
-            xml.time_entry do
-              xml.project_id project_id
-              xml.task_id task_id
-              xml.hours hours
-              xml.notes comment
-              xml.date date.strftime("%F")
-            end
-          end
-        end
-        begin
-          r = Nokogiri::XML(RestClient.post(CONFIG[:url], builder.to_xml))
-          r.remove_namespaces!
-          if r.xpath('/response').try(:attr, 'status').try(:value) == 'ok'
-            puts "Sent: #{comment}"
-          else
-            puts r.xpath('//error').try(:text)
-          end
-        rescue => e
-          puts "FAIL :( #{e.inspect}"
-        end
+        contact_id = dir.to_i > 0 ? dir.to_i : CONFIG[:contacts][dir]
+        puts "No contact found for #{dir}!" and next if contact_id.blank?
+        post_to_api('entries', {
+          'entry[contact_id]' => contact_id,
+          'entry[logged_at]' => Time.now.to_s,
+          'entry[duration]' => hours.to_f.hours.to_i,
+          'entry[description]' => comment,
+        })
       end
     end
     t.close!
+
   end
 
   desc "log [COMMENT]", "log the comment"
@@ -188,5 +132,20 @@ class Done < Thor
   def editlog
     system "#{EDITOR} #{LOG_FILE}"
   end
+
+  private
+
+  def get_from_api(resource, params = {})
+    params.merge!(CONFIG[:api_params])
+    JSON.parse(open("#{CONFIG[:api_url]}#{resource}.json?#{params.to_param}").read)
+  end
+
+  def post_to_api(resource, params = {})
+    params.merge!(CONFIG[:api_params])
+    url = URI.parse("#{CONFIG[:api_url]}#{resource}.json")
+    response, data = Net::HTTP.post_form(url, params)
+    puts "#{response.code} #{response.message}"
+  end
+
 end
 Done.start
