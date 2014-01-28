@@ -1,4 +1,4 @@
-#!/usr/local/opt/rbenv/versions/2.0.0-p195/bin/ruby
+#!/usr/bin/env ruby
 
 ENV['BUNDLE_GEMFILE'] = "#{File.dirname(__FILE__)}/Gemfile"
 
