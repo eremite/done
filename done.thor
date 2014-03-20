@@ -133,6 +133,23 @@ class Done < Thor
     system "#{EDITOR} #{LOG_FILE}"
   end
 
+  desc 'githublog', 'Create a log entry from the Github issue description of the latest commit.'
+  def githublog
+    comment = `git log -n1 --pretty=format:%s --no-merges`
+    issue_number = comment.to_s[/#(\d+)/].gsub('#', '')
+    repo = `git remote show origin -n | grep Fetch | grep github`.to_s.match(%r{:([^/:]+/.+)\.git}).to_a[1]
+    issue = JSON.parse(open("https://api.github.com/repos/#{repo}/issues/#{issue_number}?access_token=#{CONFIG[:github_token]}").read)
+    title = issue['title']
+    if title.present?
+      puts title
+      log(title)
+    else
+      puts comment
+      log(comment)
+    end
+  end
+
+
   private
 
   def get_from_api(resource, params = {})
