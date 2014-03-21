@@ -30,6 +30,7 @@ class Done < Thor
       datetime -= offset.minutes
       msg = msg.split[1..-1].join(' ')
     end
+    puts msg
     "#{datetime.strftime("%F %T")} #{File.basename(`pwd`.chomp)}  #{msg}\n"
   }
 
@@ -112,19 +113,20 @@ class Done < Thor
 
   end
 
-  desc "log [COMMENT]", "log the comment"
+  desc 'log [COMMENT]', 'Create a log entry from the given comment'
   def log(*comments)
     count_of_todays_logs = `grep -c '^#{Time.now.strftime("%F")}' #{LOG_FILE}`.chomp
     if count_of_todays_logs.to_i.zero?
-      comments.unshift("###### #{Time.now.strftime("%A %D")} ######")
+      LOG.info "###### #{Time.now.strftime("%A %D")} ######"
     end
-    LOG.info comments.join(' ').squish
+    if comments.present?
+      LOG.info comments.join(' ').squish
+    end
   end
 
   desc "gitlog", "Use the latest git log as the comment"
   def gitlog
     comment = `git log -n1 --pretty=format:%s --no-merges`
-    puts comment
     log(comment)
   end
 
@@ -138,15 +140,11 @@ class Done < Thor
     comment = `git log -n1 --pretty=format:%s --no-merges`
     issue_number = comment.to_s[/#(\d+)/].gsub('#', '')
     repo = `git remote show origin -n | grep Fetch | grep github`.to_s.match(%r{:([^/:]+/.+)\.git}).to_a[1]
-    issue = JSON.parse(open("https://api.github.com/repos/#{repo}/issues/#{issue_number}?access_token=#{CONFIG[:github_token]}").read)
-    title = issue['title']
-    if title.present?
-      puts title
-      log(title)
-    else
-      puts comment
-      log(comment)
+    if repo.present?
+      issue = JSON.parse(open("https://api.github.com/repos/#{repo}/issues/#{issue_number}?access_token=#{CONFIG[:github_token]}").read)
+      comment = issue['title'] if issue['title'].present?
     end
+    log(comment)
   end
 
 
