@@ -138,9 +138,9 @@ class Done < Thor
   desc 'githublog', 'Create a log entry from the Github issue description of the latest commit.'
   def githublog
     comment = `git log -n1 --pretty=format:%s --no-merges`
-    issue_number = comment.to_s[/#(\d+)/].gsub('#', '')
+    issue_number = comment.to_s[/#(\d+)/].to_s.gsub('#', '')
     repo = `git remote show origin -n | grep Fetch | grep github`.to_s.match(%r{:([^/:]+/.+)\.git}).to_a[1]
-    if repo.present?
+    if issue_number.present? && repo.present?
       issue = JSON.parse(open("https://api.github.com/repos/#{repo}/issues/#{issue_number}?access_token=#{CONFIG[:github_token]}").read)
       comment = issue['title'] if issue['title'].present?
     end
