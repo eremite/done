@@ -22,24 +22,33 @@ always tweak things at the end of the day.
 
 ## Installation
 
-Create config file. Symlink and customize aliases (and fix paths).
+* Create config file from the example template.
+* Add `done.thor` to your path (maybe symlink it in ~/bin).
+* Optionally source `.bash_aliases` in your `.bashrc`.
 
 ## Usage
 
     done.thor log "Reword verbiage. closes #101"
     done.thor gitlog # Uses latest git commit
+    done.thor githublog # Uses issue name from latest git commit
     done.thor editlog # Opens the log in your $EDITOR of choice
     done.thor report # Opens end of day report
 
 ## Tips
 
-If you forget to log time you can pass a number of minutes as the first argument to log. e.g. Use `log 30 Lunch` if you went to lunch a half hour ago.Or edit the log file manually.
+If you forget to log time you can pass a number of minutes as the first
+argument to log. e.g. Use `log 30 Lunch` if you went to lunch a half hour
+ago. Or edit the log file manually.
 
 You can add nicknames for projects in the config file.
 
-If you forget to submit your time at the end of the day you can pass `--days_ago=1` as an argument to report. (This only works for the current week. If you forgot to submit last week's time, you'll have to go find the log file for it.)
+If you forget to submit your time at the end of the day you can pass
+`--days_ago=1` as an argument to report. (This only works for the current week.
+If you forgot to submit last week's time, you'll have to go find the log file
+for it.)
 
-If you change your mind about running a report, just delete all the time entries and it won't try to send anything to Minute Dock.
+If you change your mind about running a report, just delete all the time
+entries and it won't try to send anything to Minute Dock.
 
 ## Contributers
 
