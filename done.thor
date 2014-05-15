@@ -1,6 +1,7 @@
 #!/usr/bin/env ruby
 
-ENV['BUNDLE_GEMFILE'] = "#{File.dirname(__FILE__)}/Gemfile"
+CURRENT_PATH = File.dirname(File.symlink?(__FILE__) ? File.readlink(__FILE__) : __FILE__)
+ENV['BUNDLE_GEMFILE'] = "#{CURRENT_PATH}/Gemfile"
 
 require 'rubygems'
 require 'fileutils'
@@ -13,7 +14,7 @@ Bundler.require
 
 I18n.enforce_available_locales = false # Avoid warnings.
 
-CONFIG = YAML.load_file(File.expand_path('config.yml', File.dirname(__FILE__))).with_indifferent_access
+CONFIG = YAML.load_file(File.expand_path('config.yml', CURRENT_PATH)).with_indifferent_access
 
 class Done < Thor
 
@@ -21,7 +22,7 @@ class Done < Thor
   EDITOR = ENV['EDITOR'] || 'vim'
 
   # Set up log
-  LOG_FILE = File.expand_path('time.log', "#{File.dirname(__FILE__)}/log")
+  LOG_FILE = File.expand_path('time.log', "#{CURRENT_PATH}/log")
   FileUtils.mkdir_p(File.dirname(LOG_FILE))
   LOG = Logger.new(LOG_FILE, 'weekly')
   LOG.formatter = proc {|severity, datetime, progname, msg|
