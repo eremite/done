@@ -39,7 +39,7 @@ class Done < Thor
   method_options :days_ago => 0
   def report
 
-    if File.exists?(path = File.expand_path('contacts.yml', File.dirname(__FILE__)))
+    if File.exists?(path = File.expand_path('contacts.yml', CURRENT_PATH))
       contacts = YAML.load_file(path)
     else
       contacts = get_from_api('contacts')
@@ -85,7 +85,7 @@ class Done < Thor
       t.puts "# #{contact['id'].to_s.rjust(7)} #{contact['name']}"
     end
     t.close
-    system "vim -S #{File.expand_path(File.dirname(__FILE__))}/done.vim #{t.path}"
+    system "vim -S #{File.expand_path(CURRENT_PATH)}/done.vim #{t.path}"
 
     # Reopen editted report, parse and send to API
     t.open
