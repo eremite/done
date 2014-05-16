@@ -158,9 +158,11 @@ class Done < Thor
 
   def post_to_api(resource, params = {})
     params.merge!(CONFIG[:api_params])
-    url = URI.parse("#{CONFIG[:api_url]}#{resource}.json")
-    response, data = Net::HTTP.post_form(url, params)
-    puts "#{response.code} #{response.message}"
+    url = "#{CONFIG[:api_url]}#{resource}.json"
+    params_string = params.map do |key, value|
+      [key, value].join('=')
+    end.join('&')
+    puts `curl -X POST --silent --data '#{params_string}' #{url}`
   end
 
 end
