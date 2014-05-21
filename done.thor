@@ -87,7 +87,7 @@ class Done < Thor
     t.close
     system "vim -S #{File.expand_path(CURRENT_PATH)}/done.vim #{t.path}"
 
-    # Reopen editted report, parse and send to API
+    # Reopen edited report, parse and send to API
     t.open
     t.rewind
     contents = t.read.split("\n")
@@ -104,7 +104,7 @@ class Done < Thor
         puts "No contact found for #{dir}!" and next if contact_id.blank?
         post_to_api('entries', {
           'entry[contact_id]' => contact_id,
-          'entry[logged_at]' => Time.now.to_s,
+          'entry[logged_at]' => date,
           'entry[duration]' => hours.to_f.hours.to_i,
           'entry[description]' => comment,
         })
