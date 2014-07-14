@@ -161,7 +161,7 @@ class Done < Thor
     url = "#{CONFIG[:api_url]}#{resource}.json"
     params_string = params.map do |key, value|
       [key, value].join('=')
-    end.join('&')
+    end.join('&').gsub("'", "\\'")
     puts `curl -X POST --silent --data '#{params_string}' #{url}`
   end
 
