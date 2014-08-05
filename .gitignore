@@ -1,6 +1,6 @@
-contacts.yml
-config.yml
-log/*
 .bundle
-vendor
+config.yml
+contacts.yml
+log
 tmp
+vendor
