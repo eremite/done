@@ -67,7 +67,7 @@ class Done < Thor
       hours = (new_time - time) / 1.hour
       time = new_time
       next if hours.zero? || /^out$/i.match(comment.squish)
-      entries << "#{hours.round(2).to_s.rjust(5)} #{dir} #{log.split[3..-1].join(' ')}\n"
+      entries << "#{sprintf('%5.2f', hours)} #{dir} #{log.split[3..-1].join(' ')}\n"
     end
     entries.sort_by { |l| l.split[1] }.each {|e| t << e}
     t.puts
